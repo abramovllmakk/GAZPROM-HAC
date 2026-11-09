@@ -1,0 +1,303 @@
+import type { Metadata } from "next";
+import { PageHeader } from "@/components/layout/PageHeader";
+import { Panel } from "@/components/ui/Panel";
+import { StationTag } from "@/components/ui/Status";
+import { STATUS_THRESHOLDS } from "@/domain/analysis/bottleneck";
+import { BASELINE_PARAMETERS, DEMO_SCENARIOS, STATIONS } from "@/domain/model/demoData";
+import { AGGREGATE_METRICS, STATION_METRICS } from "@/domain/model/metrics";
+import { DISTRIBUTION_LABELS, distributionMean } from "@/domain/simulation/distributions";
+import { ENGINE_LIMITS, ENGINE_VERSION } from "@/domain/simulation/types";
+import { fmtNumber, fmtRub } from "@/lib/format";
+
+export const metadata: Metadata = { title: "Документация" };
+
+function H({ children }: { children: React.ReactNode }) {
+  return <h3 className="mt-5 font-semibold first:mt-0">{children}</h3>;
+}
+function P({ children }: { children: React.ReactNode }) {
+  return <p className="mt-2 max-w-[75ch] text-sm leading-relaxed text-muted">{children}</p>;
+}
+
+export default function DocumentationPage() {
+  const b = BASELINE_PARAMETERS;
+  return (
+    <>
+      <PageHeader
+        title="Документация модели"
+        description="Как устроена модель, какие данные используются, как считаются показатели и где проходят границы применимости. Таблицы ниже формируются из тех же модулей, что использует симулятор."
+      />
+      <div className="grid gap-5 xl:grid-cols-[220px_1fr]">
+        <nav aria-label="Разделы" className="hidden xl:block">
+          <ul className="sticky top-6 space-y-1.5 text-sm text-muted">
+            {[
+              ["model", "Модель процесса"],
+              ["engine", "Симуляционный движок"],
+              ["data", "Демонстрационные данные"],
+              ["metrics", "Показатели"],
+              ["analysis", "Узкие места и сравнение"],
+              ["tour", "3D-тур"],
+              ["privacy", "Персональные данные"],
+              ["limits", "Ограничения"],
+            ].map(([id, label]) => (
+              <li key={id}>
+                <a href={`#${id}`} className="hover:text-ink">
+                  {label}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </nav>
+        <div className="min-w-0 space-y-5">
+          <Panel id="model" title="Модель процесса">
+            <P>
+              Условное предприятие собирает центробежные насосы. Каждое производственное задание (один насос) проходит
+              последовательно склад комплектации, механообработку, сборку и испытания. После испытаний выполняется контроль
+              качества: годное изделие идёт на упаковку и отгрузку, изделие с дефектом — на участок доработки и затем на повторные
+              испытания. После {b.maxReworkCycles} циклов доработки (параметр сценария) повторно бракованное изделие списывается.
+            </P>
+            <div className="mt-4 flex flex-wrap gap-2">
+              {STATIONS.map((s) => (
+                <span key={s.id} className="inline-flex items-center gap-2 rounded-[var(--radius-control)] border border-line px-2.5 py-1.5 text-sm">
+                  <StationTag code={s.code} /> {s.name} <code className="text-xs text-faint">{s.id}</code>
+                </span>
+              ))}
+            </div>
+            <P>
+              Идентификаторы участков (stationId) стабильны и используются одновременно в графе процесса, параметрах сценариев,
+              метриках прогонов, точках интереса и объектах 3D-сцены.
+            </P>
+          </Panel>
+
+          <Panel id="engine" title={`Симуляционный движок (версия ${ENGINE_VERSION})`}>
+            <div className="rounded-lg border border-accent/20 bg-accent-soft/60 p-4 sm:p-5">
+              <h3 className="text-sm font-semibold text-accent-strong">Как проходит один расчёт</h3>
+              <ol className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                {[
+                  ["01", "Поступление", "В цех приходит новое задание по выбранному потоку."],
+                  ["02", "Обработка", "Изделие ждёт свободный ресурс и проходит операции по маршруту."],
+                  ["03", "Контроль", "После испытаний годное изделие уходит на отгрузку, брак — на доработку."],
+                  ["04", "Итог смены", "На горизонте фиксируются выпуск, затраты, загрузка и незавершённые изделия."],
+                ].map(([step, title, text]) => (
+                  <li key={step} className="min-w-0 rounded-md border border-white/80 bg-white p-3">
+                    <span className="font-mono text-xs font-semibold text-accent">{step}</span>
+                    <h4 className="mt-1 text-sm font-semibold">{title}</h4>
+                    <p className="mt-1 text-xs leading-relaxed text-muted">{text}</p>
+                  </li>
+                ))}
+              </ol>
+            </div>
+
+            <div className="mt-4 grid gap-3 md:grid-cols-2">
+              <section className="min-w-0 rounded-lg border border-line bg-raised/60 p-4" aria-labelledby="engine-calendar">
+                <h3 id="engine-calendar" className="font-semibold">Календарь событий</h3>
+                <p className="mt-1 text-sm leading-relaxed text-muted">Будущие события упорядочены по времени, приоритету и номеру записи в двоичной куче.</p>
+                <dl className="mt-3 grid gap-x-3 gap-y-2 text-sm sm:grid-cols-2">
+                  {[
+                    ["ARRIVAL", "Поступление задания"],
+                    ["PROCESS_FINISH", "Окончание операции"],
+                    ["FAILURE", "Отказ оборудования"],
+                    ["REPAIR_END", "Окончание ремонта"],
+                    ["HORIZON_END", "Конец горизонта"],
+                  ].map(([name, description]) => <div key={name}><dt className="font-mono text-xs font-semibold text-accent-strong">{name}</dt><dd className="mt-0.5 text-muted">{description}</dd></div>)}
+                </dl>
+              </section>
+              <section className="min-w-0 rounded-lg border border-line bg-raised/60 p-4" aria-labelledby="engine-journal">
+                <h3 id="engine-journal" className="font-semibold">Записи журнала</h3>
+                <p className="mt-1 text-sm leading-relaxed text-muted">Мгновенные события описывают, что произошло с изделием и оборудованием.</p>
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  {["QUEUE_ENTER", "PROCESS_START", "QUALITY_CHECK", "REWORK", "SCRAP", "DEPARTURE", "BREAKDOWN", "REPAIR"].map((event) => (
+                    <code key={event} className="rounded border border-line bg-white px-2 py-1 font-mono text-[11px] text-ink">{event}</code>
+                  ))}
+                </div>
+              </section>
+              <section className="min-w-0 rounded-lg border border-line bg-surface p-4" aria-labelledby="engine-flow">
+                <h3 id="engine-flow" className="font-semibold">Очереди и ресурсы</h3>
+                <ul className="mt-2 space-y-2 text-sm leading-relaxed text-muted">
+                  <li><b className="text-ink">FIFO:</b> задания обслуживаются в порядке поступления в очередь.</li>
+                  <li><b className="text-ink">Вместимость:</b> число параллельных ресурсов ограничено параметрами участка.</li>
+                  <li><b className="text-ink">Разгон:</b> параметр сценария позволяет исключить старт с пустого цеха из статистики.</li>
+                </ul>
+              </section>
+              <section className="min-w-0 rounded-lg border border-line bg-surface p-4" aria-labelledby="engine-randomness">
+                <h3 id="engine-randomness" className="font-semibold">Повторяемость и сравнение</h3>
+                <p className="mt-2 text-sm leading-relaxed text-muted">Воспроизводимый генератор sfc32 с инициализацией splitmix32 даёт одинаковый журнал при одинаковых параметрах и seed. Репликация №1 использует базовый seed, остальные — производные seed.</p>
+                <p className="mt-2 text-sm leading-relaxed text-muted"><b className="text-ink">Общие случайные числа (CRN).</b> Потоки поступлений, длительностей операций, исходов контроля, отказов и ремонтов адресуются seed и событием. В парных сценариях случайные условия остаются одинаковыми, поэтому сравнение показывает эффект изменённых параметров.</p>
+              </section>
+              <section className="min-w-0 rounded-lg border border-line bg-surface p-4 md:col-span-2" aria-labelledby="engine-failures">
+                <h3 id="engine-failures" className="font-semibold">Отказы, метрики и границы модели</h3>
+                <div className="mt-2 grid gap-4 md:grid-cols-2">
+                  <p className="text-sm leading-relaxed text-muted"><b className="text-ink">Отказы.</b> Для оборудования задаются MTBF — средняя наработка до отказа — и MTTR — среднее время ремонта. Отказы моделируются пуассоновским потоком с интенсивностью вместимость / MTBF. Модель неупреждающая: занятая единица завершает операцию, затем уходит в ремонт и возвращается через экспоненциальное время со средним MTTR. Доступность = 1 − время в ремонте / (вместимость × горизонт).</p>
+                  <div className="rounded-md bg-raised p-3 text-sm leading-relaxed">
+                    <p><b>Загрузка:</b> интеграл занятых ресурсов по времени / (вместимость × горизонт).</p>
+                    <p className="mt-1"><b>НЗП:</b> изделия в очередях и обработке на конец горизонта.</p>
+                    <p className="mt-1"><b>Лимиты прогона:</b> горизонт до {fmtNumber(ENGINE_LIMITS.maxHorizonMin, 0)} мин; до {ENGINE_LIMITS.maxCapacity} единиц ресурса; до {ENGINE_LIMITS.maxReworkCycles} циклов доработки; до {fmtNumber(ENGINE_LIMITS.maxEvents, 0)} событий.</p>
+                  </div>
+                </div>
+              </section>
+            </div>
+          </Panel>
+
+          <Panel id="data" title="Демонстрационные данные (синтетические)">
+            <P>
+              Все значения придуманы для демонстрации и не являются реальными показателями какого-либо предприятия. Базовый сценарий:
+              горизонт {b.horizonMin} мин (две смены), пуассоновский поток {fmtNumber(b.arrivalRatePerHour)} задания/ч, брак при первичных
+              испытаниях {fmtNumber(b.defectProbability * 100)}%, при повторных — {fmtNumber(b.retestDefectProbability * 100)}%, компоненты{" "}
+              {fmtRub(b.materialCostPerUnitRub)} на задание, постоянные расходы {fmtRub(b.fixedCostRub)} за горизонт, {b.replications} репликаций.
+            </P>
+            <div className="-mx-4 mt-4 overflow-x-auto sm:mx-0">
+              <table className="w-full min-w-[720px] text-sm">
+                <thead>
+                  <tr className="border-b border-line text-left text-xs text-muted">
+                    <th className="py-2 pr-2 font-normal">Участок</th>
+                    <th className="px-2 py-2 text-right font-normal">Ресурс, ед.</th>
+                    <th className="px-2 py-2 font-normal">Время операции, мин</th>
+                    <th className="px-2 py-2 text-right font-normal">Ставка, ₽/ч</th>
+                    <th className="px-2 py-2 text-right font-normal">Расходники, ₽/оп.</th>
+                    <th className="py-2 pl-2 text-right font-normal">Отказы: MTBF / MTTR, мин</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {STATIONS.map((s) => {
+                    const p = b.stations[s.id];
+                    const t = p.processTime;
+                    const desc = t.kind === "triangular" ? `мин ${t.min}, мода ${t.mode}, макс ${t.max}` : DISTRIBUTION_LABELS[t.kind];
+                    return (
+                      <tr key={s.id} className="border-b border-line/70 last:border-0">
+                        <td className="py-2 pr-2">
+                          {s.code} {s.name}
+                        </td>
+                        <td className="px-2 py-2 text-right">{p.capacity}</td>
+                        <td className="px-2 py-2">
+                          {DISTRIBUTION_LABELS[t.kind]}: {desc}; среднее {fmtNumber(distributionMean(t))}
+                        </td>
+                        <td className="px-2 py-2 text-right">{fmtNumber(p.hourlyCostRub, 0)}</td>
+                        <td className="px-2 py-2 text-right">{fmtNumber(p.consumablesPerOperationRub, 0)}</td>
+                        <td className="py-2 pl-2 text-right">{p.failure ? `${fmtNumber(p.failure.mtbfMin, 0)} / ${fmtNumber(p.failure.mttrMin, 0)}` : "—"}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            <H>Демонстрационные сценарии</H>
+            <ul className="mt-2 space-y-1.5 text-sm">
+              {DEMO_SCENARIOS.map((s) => (
+                <li key={s.id}>
+                  <span className="font-medium">{s.name}</span> <span className="text-muted">— {s.description}</span>
+                </li>
+              ))}
+            </ul>
+            <P>Результаты этих сценариев не заданы заранее: они рассчитываются симулятором при заполнении базы и при каждом запуске.</P>
+          </Panel>
+
+          <Panel id="metrics" title="Показатели и формулы">
+            <div className="-mx-4 overflow-x-auto sm:mx-0">
+              <table className="w-full min-w-[620px] text-sm">
+                <thead>
+                  <tr className="border-b border-line text-left text-xs text-muted">
+                    <th className="py-2 pr-2 font-normal">Показатель</th>
+                    <th className="px-2 py-2 font-normal">Единица</th>
+                    <th className="py-2 pl-2 font-normal">Определение</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {Object.values(AGGREGATE_METRICS).map((m) => (
+                    <tr key={m.key} className="border-b border-line/70 align-top last:border-0">
+                      <td className="py-2 pr-2">{m.label}</td>
+                      <td className="px-2 py-2 text-muted">{m.unit}</td>
+                      <td className="py-2 pl-2 text-muted">{m.description}</td>
+                    </tr>
+                  ))}
+                  {Object.values(STATION_METRICS).map((m) => (
+                    <tr key={`st-${m.key}`} className="border-b border-line/70 align-top last:border-0">
+                      <td className="py-2 pr-2">Участок: {m.label.toLowerCase()}</td>
+                      <td className="px-2 py-2 text-muted">{m.unit}</td>
+                      <td className="py-2 pl-2 text-muted">{m.description}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <H>Модель стоимости</H>
+            <P>
+              Полная стоимость = Σ(вместимость × горизонт, ч × ставка часа доступности ресурса) + Σ(начатые операции × расходные
+              материалы) + запущенные задания × комплект компонентов + постоянные расходы. Ресурсы оплачиваются за доступность, а не за
+              занятость: так добавление поста увеличивает затраты даже при его простое. Стоимость единицы = полная стоимость / выпуск и не
+              определена при нулевом выпуске. Других расходов модель не содержит.
+            </P>
+          </Panel>
+
+          <Panel id="analysis" title="Узкие места и сравнение сценариев">
+            <P>
+              Состояние участка определяется по эффективной загрузке — занятости плюс доле времени в ремонте: «норма» ниже {STATUS_THRESHOLDS.high * 100}%, «высокая загрузка» — от {STATUS_THRESHOLDS.high * 100}%,
+              «перегрузка» — от {STATUS_THRESHOLDS.critical * 100}% или если очередь на конец горизонта не меньше {STATUS_THRESHOLDS.queueGrowthPerCapacity}{" "}
+              × вместимость (и не меньше 3). Узкое место — участок с наивысшим статусом, затем с наибольшей загрузкой и ожиданием.
+            </P>
+            <P>
+              Сравнение использует средние по репликациям. Если оба прогона рассчитаны с одинаковым seed и числом репликаций, применяется
+              парное сравнение: 95% доверительный интервал строится по разностям внутри пар репликаций с общими случайными числами — он
+              в 5–10 раз уже интервала для независимых выборок. Иначе используется интервал Уэлча. Изменение считается различимым, если
+              интервал не содержит ноль; при одной репликации различимость не оценивается.
+              Сравнение показывает, как ведёт себя модель при изменённых параметрах, и не доказывает причинно-следственных связей на
+              реальном производстве.
+            </P>
+            <H>Запас мощности</H>
+            <P>
+              Кривая пропускной способности моделирует сценарий при спросе от 60% до 150% текущего (10 точек × 10 репликаций, одинаковый
+              seed — кривая гладкая благодаря общим случайным числам) и показывает средний цикл и выпуск с 95% ДИ. «Предел» — аналитическая
+              оценка: спрос, при котором ρ = λ·v·E[S]/(c·A) самого нагруженного участка достигает 100%. Если текущий спрос выше предела,
+              очереди и НЗП растут в течение смены, а на коротком горизонте это частично скрыто разгоном с пустой системы.
+            </P>
+            <H>Советник по ресурсам</H>
+            <P>
+              Для выбранного прогона советник автоматически моделирует варианты «+1 единица ресурса» на каждом участке и «+1 на двух самых
+              загруженных», с тем же seed и числом репликаций, и оценивает их парным сравнением. Вариант «рекомендуется», если он различимо
+              сокращает цикл или увеличивает выпуск без различимого роста стоимости единицы либо различимо снижает стоимость единицы.
+              Изменения меньше 1% считаются практически несущественными. Любой вариант можно одним действием превратить в сценарий,
+              рассчитать и открыть сравнение «до/после».
+            </P>
+          </Panel>
+
+          <Panel id="tour" title="3D-тур">
+            <P>
+              Сцена строится процедурно (без внешних файлов): участки, станки с ЧПУ, сборочные посты, испытательные стенды, стеллажи,
+              конвейеры и паллеты. Число единиц оборудования на участке берётся из параметров выбранного прогона. Режим «Экскурсия»
+              показывает средние показатели прогона, режим «Воспроизведение» — кадры состояния с шагом 5 минут, полученные из журнала
+              событий репликации №1. Анимации вращения шпинделя и стрелок приборов декоративны и включаются только для занятого оборудования
+              в соответствии с данными. При отсутствии WebGL показывается план цеха с теми же точками интереса и показателями.
+            </P>
+            <P>
+              Маршруты экскурсии подготовлены для разных аудиторий: обзорный, для абитуриентов и студентов, для руководства и партнёров
+              (по кейсам, проверенным моделью) и для новых сотрудников. В режиме воспроизведения модельное время идёт непрерывно, насосы
+              движутся между участками по журналу событий (транспорт в модели мгновенный — движение иллюстративно), единицы в ремонте
+              обозначены ограждением. Карточки кейсов точек интереса показывают рассчитанные «до/после» и ведут к сравнению.
+            </P>
+          </Panel>
+
+          <Panel id="privacy" title="Персональные данные (152-ФЗ)">
+            <P>
+              Система хранит минимально необходимые данные учётной записи: логин, псевдоним и bcrypt-хеш пароля. ФИО, e-mail, телефоны и
+              иные персональные данные не собираются; демонстрационные учётные записи не относятся к реальным людям. Сессии хранятся на
+              сервере и истекают через 8 часов; просроченные сессии удаляются. Блокировка учётной записи и смена пароля сразу отзывают
+              сессии. После входа браузер получает подписанную cookie доверенного устройства (id пользователя, отпечаток текущего пароля и случайный идентификатор, 90 дней; отзывается сменой пароля, блокировкой и удалением) — она
+              защищает от блокировки входа посторонним. Журнал аудита хранит только логин-псевдоним, тип действия и объект, записи старше 180 дней удаляются; при удалении
+              учётной записи её записи в журнале обезличиваются. Это технические меры минимизации данных, а не заключение о
+              полном соответствии требованиям закона: для промышленной эксплуатации нужны организационные меры оператора (политика
+              обработки, согласия, модель угроз, размещение данных).
+            </P>
+          </Panel>
+
+          <Panel id="limits" title="Ограничения модели">
+            <ul className="mt-1 list-disc space-y-1.5 pl-5 text-sm text-muted">
+              <li>Нет переналадок, графика смен, перерывов и транспортного времени между участками. Отказы моделируются упрощённо: неупреждающе, с экспоненциальными наработкой и ремонтом.</li>
+              <li>Все изделия однотипны; приоритеты заказов и партии не моделируются; дисциплина очередей — FIFO.</li>
+              <li>Система начинается пустой. Период разгона по умолчанию входит в статистику; его можно исключить параметром сценария «Период разгона» — тогда показатели считаются только после него.</li>
+              <li>Параметры синтетические; перед применением к реальному цеху модель требует калибровки по фактическим данным.</li>
+              <li>Ограничитель частоты запусков хранится в памяти одного процесса.</li>
+            </ul>
+          </Panel>
+        </div>
+      </div>
+    </>
+  );
+}

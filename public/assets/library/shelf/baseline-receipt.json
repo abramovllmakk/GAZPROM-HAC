@@ -1,0 +1,85 @@
+{
+  "id": "01-L1-0255",
+  "name": "Five-Tier Steel and Wood Storage Shelf",
+  "mode": "unified",
+  "revision": "af2ebfa9dbb1a647772e38e079e82e1f42860dd0c64aa6ed3d9702b6aac99cf9",
+  "version": "compact-v2+orientation-v1",
+  "sourceSha256": "77f854742131f1a1b5f4dfe84e5723b8a2b0e7b86b147a11746e096b1065e705",
+  "sourceModule": null,
+  "sourceBytes": 7362747,
+  "bytes": 2121693,
+  "entryBytes": 15555,
+  "defaultState": "default",
+  "states": [
+    "default"
+  ],
+  "stateBytes": {
+    "default": 2112221
+  },
+  "verticesBefore": 126096,
+  "verticesAfter": 84060,
+  "indexedGeometries": 10,
+  "geometryBytesBefore": 4035072,
+  "geometryBytesAfter": 3194304,
+  "textureBytesBefore": 1405390,
+  "textureBytesAfter": 1405390,
+  "exactTextures": 15,
+  "colorTexturesOptimized": [],
+  "geometryReconstructionExact": true,
+  "allStatesPreserved": true,
+  "allMaterialsPreserved": true,
+  "files": {
+    "README.md": {
+      "bytes": 3303,
+      "sha256": "e175ee1cefff40f10cafabf17f62a3fafb5a79859dfe504f1caf576ce3f94377"
+    },
+    "THREE-LICENSE.txt": {
+      "bytes": 1081,
+      "sha256": "4c40a1ef62450b857c3b2aaf294936304cd552d965fbcd9d32d4c5bcf4ba4454"
+    },
+    "asset.mjs": {
+      "bytes": 15555,
+      "sha256": "520a035b149161c8067a2667802430dc85069c4fe63d77a2c26d739d41456ff2"
+    },
+    "data.json.gz": {
+      "bytes": 7999,
+      "sha256": "03bd3b19afd5f448fabbe2c085593f818718ffd1a8c6ac5f56f62bc60c53b8b8"
+    },
+    "loader.mjs": {
+      "bytes": 3198,
+      "sha256": "c4394edfa2f78b47f55304d7126f1e16fd13667107fa2475cfd08c1b300fc42d"
+    },
+    "pack-1.bin.gz": {
+      "bytes": 2085550,
+      "sha256": "3cc658447ed14eaa346fe3aa2c44cf78c56c005ee7a9664fd0038a395f2a897a"
+    },
+    "orientation.json": {
+      "bytes": 1287,
+      "sha256": "4a334f2d954c2cd2880e469cf1d4779ddc3ae077540230441056723b9d8cc33f"
+    },
+    "orientation.mjs": {
+      "bytes": 1020,
+      "sha256": "110ccfb7ac509ac415e30d6cafdd026e6b4660331c99cdaefa3939bbe62b67c1"
+    }
+  },
+  "relativeDirectory": "01-L1-0255/compact-v2-77f854742131",
+  "elapsedSeconds": 1.05,
+  "qualification": "unified",
+  "reusedFrom": "01-L1-0255/compact-v1-77f854742131",
+  "reusedReceiptSha256": "1a42aa54a746a4fb4a1342e5d7fff994e332d244af8091bb63e0ceee056538c9",
+  "textureEncodings": [],
+  "payloadBytes": 2114688,
+  "orientationRevision": "2026-10-13",
+  "orientationStatus": "source_declared",
+  "predecessor": {
+    "batch": "2026-10-12",
+    "zipSha256": "ae530f409b4c163fb6df5e1eae306bab4264cd095ddf6768c255c0712e46319f",
+    "receiptSha256": "e48c2a1ecd507bd90a0ed30d75fe39d7430603d16fa5966105c918a8a58f89cb"
+  },
+  "publicDistributionCleanup": {
+    "version": "public-package-privacy-20261026-v1",
+    "internalPathsOmitted": true,
+    "rightsNoticesPreserved": true,
+    "originalBuildMetricsRetained": true
+  }
+}

@@ -1,0 +1,24 @@
+node_modules
+.next
+out
+*.tsbuildinfo
+next-env.d.ts
+.env
+prisma/*.db
+prisma/*.db-journal
+test-results
+playwright-report
+coverage
+.DS_Store
+
+.claude/
+
+# Материалы организаторов не публикуются в открытом репозитории (см. docs/source/README.md)
+docs/source/*.pptx
+.playwright-mcp
+
+# Локальные архивы и резервные копии
+*.zip
+
+# Автопроверка GitHub Actions пока не подключена (нужен токен с правом workflow)
+.github/

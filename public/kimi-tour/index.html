@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Industria Twin — 3D-тур по цеху</title>
+<style>
+  :root{
+    --bg:#0d1117; --panel:rgba(13,17,23,.82); --line:rgba(148,163,184,.18);
+    --txt:#dbe4ee; --dim:#8b98a9; --acc:#f5b301; --ok:#34d17b; --warn:#f5a623; --crit:#ef4444;
+  }
+  html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:var(--txt)}
+  canvas{display:block}
+  #hud{position:fixed;left:12px;bottom:10px;color:#65758c;font:11px/1.5 ui-monospace,monospace;pointer-events:none;text-shadow:0 1px 2px #000;z-index:5}
+
+  .panel{position:fixed;background:var(--panel);border:1px solid var(--line);border-radius:12px;
+    backdrop-filter:blur(10px);box-shadow:0 8px 30px rgba(0,0,0,.45);z-index:10}
+
+  #brand{left:16px;top:16px;padding:12px 16px;max-width:320px}
+  #brand h1{margin:0;font-size:15px;letter-spacing:.06em;text-transform:uppercase}
+  #brand h1 b{color:var(--acc)}
+  #brand p{margin:6px 0 0;font-size:12px;color:var(--dim);line-height:1.45}
+  #views{display:flex;gap:6px;margin-top:10px}
+  .btn{cursor:pointer;border:1px solid var(--line);background:rgba(148,163,184,.08);color:var(--txt);
+    border-radius:8px;padding:6px 12px;font-size:12px;transition:background .15s,border-color .15s}
+  .btn:hover{background:rgba(148,163,184,.18)}
+  .btn:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+  .btn.on{background:rgba(245,179,1,.16);border-color:rgba(245,179,1,.55);color:#ffd766}
+  .btn:disabled{opacity:.4;cursor:default}
+
+  /* карточка точки интереса */
+  #poi{left:16px;top:50%;transform:translateY(-50%);width:264px;padding:14px 16px;display:none}
+  #poi.show{display:block}
+  #poi .code{font:700 11px ui-monospace,monospace;color:var(--acc);letter-spacing:.14em}
+  #poi h2{margin:4px 0 2px;font-size:16px}
+  #poi .sub{font-size:12px;color:var(--dim);margin-bottom:10px}
+  #poi .mrow{display:flex;justify-content:space-between;font-size:12.5px;padding:5px 0;border-top:1px solid var(--line)}
+  #poi .mrow span:last-child{font-weight:600;font-variant-numeric:tabular-nums}
+  #poi .status{display:inline-flex;align-items:center;gap:6px;font-size:12px;margin-top:10px}
+  #poi .dot{width:9px;height:9px;border-radius:50%}
+  #poi .case{margin-top:10px;font-size:12px;color:var(--dim);background:rgba(148,163,184,.07);
+    border-left:3px solid var(--acc);padding:8px 10px;border-radius:0 8px 8px 0;line-height:1.5}
+
+  /* нижняя панель тура */
+  #tour{left:50%;bottom:18px;transform:translateX(-50%);display:flex;align-items:center;gap:10px;padding:10px 14px}
+  #tour .nav{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;font-size:16px;padding:0}
+  #tourInfo{text-align:center;min-width:190px}
+  #tourInfo .step{font:11px ui-monospace,monospace;color:var(--dim);letter-spacing:.1em}
+  #tourInfo .name{font-size:13.5px;font-weight:600;margin-top:2px}
+  #dots{display:flex;gap:5px;justify-content:center;margin-top:6px}
+  #dots i{width:6px;height:6px;border-radius:50%;background:rgba(148,163,184,.35);cursor:pointer}
+  #dots i.on{background:var(--acc)}
+  #dots i:hover{background:#cbd5e1}
+
+  #legend{right:16px;top:16px;padding:10px 14px;font-size:12px;color:var(--dim)}
+  #legend .row{display:flex;align-items:center;gap:8px;margin:4px 0}
+  #legend .dot{width:9px;height:9px;border-radius:50%}
+
+  #loading{position:fixed;inset:0;display:grid;place-items:center;background:var(--bg);z-index:50;transition:opacity .5s}
+  #loading.done{opacity:0;pointer-events:none}
+  #loading .box{text-align:center}
+  #loading .bar{width:220px;height:3px;background:rgba(148,163,184,.2);border-radius:2px;margin:14px auto 0;overflow:hidden}
+  #loading .bar i{display:block;height:100%;width:0;background:var(--acc);transition:width .2s}
+  #loading .t{font-size:13px;color:var(--dim);letter-spacing:.08em;text-transform:uppercase}
+
+  @media (max-width:760px){
+    #brand{max-width:210px;padding:10px 12px}
+    #brand p{display:none}
+    #poi{top:auto;bottom:84px;transform:none;width:calc(100vw - 60px)}
+    #legend{display:none}
+  }
+</style>
+  <script type="module" crossorigin src="./assets/index-kcNeYA_Z.js"></script>
+</head>
+<body>
+<div id="loading"><div class="box"><div class="t">Загрузка цеха</div><div class="bar"><i id="lbar"></i></div></div></div>
+
+<div class="panel" id="brand">
+  <h1>Industria <b>Twin</b></h1>
+  <p>Цифровой двойник предприятия · 3D-тур по производству насосов. Демонстрационные данные базового сценария.</p>
+  <div id="views">
+    <button class="btn on" id="v-iso" type="button">Обзор</button>
+    <button class="btn" id="v-top" type="button">Сверху</button>
+    <button class="btn" id="v-free" type="button">Свободный</button>
+  </div>
+</div>
+
+<div class="panel" id="poi" aria-live="polite"></div>
+
+<div class="panel" id="tour">
+  <button class="btn nav" id="t-prev" type="button" aria-label="Назад">‹</button>
+  <div id="tourInfo">
+    <div class="step" id="t-step"></div>
+    <div class="name" id="t-name"></div>
+    <div id="dots"></div>
+  </div>
+  <button class="btn nav" id="t-next" type="button" aria-label="Вперёд">›</button>
+  <button class="btn" id="t-auto" type="button">Автотур</button>
+</div>
+
+<div class="panel" id="legend">
+  <div class="row"><span class="dot" style="background:var(--ok)"></span>норма</div>
+  <div class="row"><span class="dot" style="background:var(--warn)"></span>высокая загрузка</div>
+  <div class="row"><span class="dot" style="background:var(--crit)"></span>перегрузка / ремонт</div>
+</div>
+
+<div id="hud"></div>
+</body>
+</html>
